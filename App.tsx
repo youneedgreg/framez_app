@@ -1,20 +1,48 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import AuthScreen from './src/screens/AuthScreen';
 
-export default function App() {
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+
+  // Placeholder for authenticated app (we'll build this in Step 2)
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#000" />
     </View>
   );
 }
 
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <StatusBar style="auto" />
+        <AppContent />
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 });
