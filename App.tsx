@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import AuthScreen from './src/screens/AuthScreen';
+import AppNavigator from './src/navigation/AppNavigator';
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -19,12 +20,7 @@ function AppContent() {
     return <AuthScreen />;
   }
 
-  // Placeholder for authenticated app (we'll build this in Step 2)
-  return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#000" />
-    </View>
-  );
+  return <AppNavigator />;
 }
 
 export default function App() {
