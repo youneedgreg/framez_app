@@ -1,38 +1,76 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 import FeedScreen from '../screens/FeedScreen';
 import CreatePostScreen from '../screens/CreatePostScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
+const ProfileStack = createNativeStackNavigator();
+
+function ProfileStackScreen() {
+  const { colors } = useTheme();
+  
+  return (
+    <ProfileStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.background,
+        },
+        headerTintColor: colors.text,
+        headerShadowVisible: false,
+      }}
+    >
+      <ProfileStack.Screen 
+        name="ProfileMain" 
+        component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <ProfileStack.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{
+          headerTitle: 'Settings',
+          headerBackTitle: 'Back',
+        }}
+      />
+    </ProfileStack.Navigator>
+  );
+}
 
 export default function AppNavigator() {
+  const { colors, isDark } = useTheme();
+  
   return (
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: '#000',
-          tabBarInactiveTintColor: '#999',
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textSecondary,
           tabBarStyle: {
+            backgroundColor: colors.card,
             borderTopWidth: 1,
-            borderTopColor: '#eee',
+            borderTopColor: colors.border,
             height: 60,
             paddingBottom: 8,
             paddingTop: 8,
           },
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: colors.background,
             elevation: 0,
             shadowOpacity: 0,
             borderBottomWidth: 1,
-            borderBottomColor: '#eee',
+            borderBottomColor: colors.border,
           },
           headerTitleStyle: {
             fontWeight: 'bold',
             fontSize: 20,
+            color: colors.text,
           },
         }}
       >
@@ -58,7 +96,7 @@ export default function AppNavigator() {
         />
         <Tab.Screen
           name="Profile"
-          component={ProfileScreen}
+          component={ProfileStackScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="person" size={size} color={color} />
