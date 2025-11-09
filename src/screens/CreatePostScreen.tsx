@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { decode } from 'base64-arraybuffer';
 
 export default function CreatePostScreen() {
@@ -23,12 +24,16 @@ export default function CreatePostScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { colors } = useTheme();
+
+  const characterLimit = 500;
+  const remainingChars = characterLimit - content.length;
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photos');
+      Alert.alert('Permission Required', 'Please allow access to your photos to add images');
       return;
     }
 
@@ -50,11 +55,9 @@ export default function CreatePostScreen() {
 
   const uploadImage = async (uri: string): Promise<string | null> => {
     try {
-      // Fetch the image as a blob
       const response = await fetch(uri);
       const blob = await response.blob();
       
-      // Convert blob to base64
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onloadend = () => {
@@ -68,12 +71,10 @@ export default function CreatePostScreen() {
       
       const base64Data = await base64Promise;
       
-      // Generate unique filename
       const fileExt = uri.split('.').pop();
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('post-images')
         .upload(fileName, decode(base64Data), {
           contentType: `image/${fileExt}`,
@@ -81,12 +82,11 @@ export default function CreatePostScreen() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('post-images')
         .getPublicUrl(fileName);
 
-      return data.publicUrl;
+      return publicUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
       return null;
@@ -95,7 +95,7 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!content.trim() && !imageUri) {
-      Alert.alert('Error', 'Please add some content or an image');
+      Alert.alert('Empty Post', 'Please add some content or an image');
       return;
     }
 
@@ -109,17 +109,15 @@ export default function CreatePostScreen() {
     try {
       let imageUrl = null;
 
-      // Upload image if selected
       if (imageUri) {
         imageUrl = await uploadImage(imageUri);
         if (!imageUrl) {
-          Alert.alert('Error', 'Failed to upload image');
+          Alert.alert('Upload Failed', 'Could not upload image. Please try again.');
           setLoading(false);
           return;
         }
       }
 
-      // Create post
       const { error } = await supabase.from('posts').insert({
         user_id: user.id,
         author_name: user.name,
@@ -129,10 +127,11 @@ export default function CreatePostScreen() {
 
       if (error) throw error;
 
-      // Reset form
       setContent('');
       setImageUri(null);
-      Alert.alert('Success', 'Post created successfully!');
+      Alert.alert('Success', 'Your post has been shared!', [
+        { text: 'OK', onPress: () => {} }
+      ]);
     } catch (error: any) {
       console.error('Error creating post:', error);
       Alert.alert('Error', error.message || 'Failed to create post');
@@ -144,47 +143,101 @@ export default function CreatePostScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.content}>
+          {/* Character count */}
+          <View style={styles.topBar}>
+            <Text style={[styles.characterCount, { 
+              color: remainingChars < 50 ? colors.error : colors.textSecondary 
+            }]}>
+              {remainingChars} characters remaining
+            </Text>
+          </View>
+
+          {/* Text Input */}
           <TextInput
-            style={styles.input}
+            style={[styles.input, {
+              backgroundColor: colors.inputBackground,
+              color: colors.text,
+              borderColor: colors.border,
+            }]}
             placeholder="What's on your mind?"
+            placeholderTextColor={colors.textSecondary}
             value={content}
             onChangeText={setContent}
             multiline
-            maxLength={500}
+            maxLength={characterLimit}
             textAlignVertical="top"
           />
 
+          {/* Image Preview */}
           {imageUri && (
             <View style={styles.imageContainer}>
               <Image source={{ uri: imageUri }} style={styles.image} />
-              <TouchableOpacity style={styles.removeButton} onPress={removeImage}>
-                <Ionicons name="close-circle" size={30} color="#fff" />
+              <TouchableOpacity 
+                style={[styles.removeButton, { backgroundColor: colors.error }]} 
+                onPress={removeImage}
+              >
+                <Ionicons name="close" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           )}
 
-          <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-            <Ionicons name="image" size={24} color="#000" />
-            <Text style={styles.imageButtonText}>
-              {imageUri ? 'Change Image' : 'Add Image'}
-            </Text>
-          </TouchableOpacity>
+          {/* Action Buttons */}
+          <View style={styles.actionContainer}>
+            <TouchableOpacity 
+              style={[styles.imageButton, { 
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.border,
+              }]} 
+              onPress={pickImage}
+              disabled={loading}
+            >
+              <Ionicons name="image" size={24} color={colors.primary} />
+              <Text style={[styles.imageButtonText, { color: colors.text }]}>
+                {imageUri ? 'Change Photo' : 'Add Photo'}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.postButton, loading && styles.postButtonDisabled]}
-            onPress={handlePost}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.postButtonText}>Post</Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.postButton, { 
+                backgroundColor: colors.primary,
+                opacity: (!content.trim() && !imageUri) || loading ? 0.5 : 1,
+              }]}
+              onPress={handlePost}
+              disabled={(!content.trim() && !imageUri) || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.background} />
+              ) : (
+                <>
+                  <Ionicons name="paper-plane" size={20} color={colors.background} />
+                  <Text style={[styles.postButtonText, { color: colors.background }]}>
+                    Share Post
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Tips */}
+          <View style={[styles.tipsContainer, { backgroundColor: colors.inputBackground }]}>
+            <Ionicons name="bulb-outline" size={20} color={colors.textSecondary} />
+            <View style={styles.tipsTextContainer}>
+              <Text style={[styles.tipsTitle, { color: colors.text }]}>Tips for great posts</Text>
+              <Text style={[styles.tipsText, { color: colors.textSecondary }]}>
+                • Be authentic and share your thoughts{'\n'}
+                • Add high-quality images{'\n'}
+                • Keep it concise and engaging
+              </Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -194,7 +247,6 @@ export default function CreatePostScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -203,58 +255,94 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  topBar: {
+    marginBottom: 12,
+    alignItems: 'flex-end',
+  },
+  characterCount: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
   input: {
     fontSize: 16,
-    minHeight: 150,
-    padding: 15,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    marginBottom: 15,
+    minHeight: 180,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
   },
   imageContainer: {
     position: 'relative',
-    marginBottom: 15,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
-    height: 250,
-    borderRadius: 10,
+    height: 280,
     backgroundColor: '#f0f0f0',
+    borderRadius: 12,
   },
   removeButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 15,
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  actionContainer: {
+    gap: 12,
   },
   imageButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    marginBottom: 15,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 10,
   },
   imageButtonText: {
-    marginLeft: 10,
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
   },
   postButton: {
-    backgroundColor: '#000',
-    padding: 15,
-    borderRadius: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  postButtonDisabled: {
-    opacity: 0.5,
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 10,
   },
   postButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  tipsContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    gap: 12,
+  },
+  tipsTextContainer: {
+    flex: 1,
+  },
+  tipsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  tipsText: {
+    fontSize: 13,
+    lineHeight: 20,
   },
 });
