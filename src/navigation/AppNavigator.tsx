@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 import FeedScreen from '../screens/FeedScreen';
+import SearchScreen from '../screens/SearchScreen';
 import CreatePostScreen from '../screens/CreatePostScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -82,6 +83,16 @@ export default function AppNavigator() {
               <Ionicons name="home" size={size} color={color} />
             ),
             headerTitle: 'Framez',
+          }}
+        />
+        <Tab.Screen
+          name="Search"
+          component={SearchScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="search" size={size} color={color} />
+            ),
+            headerTitle: 'Search',
           }}
         />
         <Tab.Screen
