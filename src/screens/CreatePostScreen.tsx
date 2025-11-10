@@ -11,6 +11,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +30,10 @@ export default function CreatePostScreen() {
 
   const characterLimit = 500;
   const remainingChars = characterLimit - content.length;
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -104,6 +110,7 @@ export default function CreatePostScreen() {
       return;
     }
 
+    dismissKeyboard();
     setLoading(true);
 
     try {
@@ -145,101 +152,109 @@ export default function CreatePostScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.content}>
-          {/* Character count */}
-          <View style={styles.topBar}>
-            <Text style={[styles.characterCount, { 
-              color: remainingChars < 50 ? colors.error : colors.textSecondary 
-            }]}>
-              {remainingChars} characters remaining
-            </Text>
-          </View>
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            {/* Character count */}
+            <View style={styles.topBar}>
+              <Text style={[styles.characterCount, { 
+                color: remainingChars < 50 ? colors.error : colors.textSecondary 
+              }]}>
+                {remainingChars} characters remaining
+              </Text>
+            </View>
 
-          {/* Text Input */}
-          <TextInput
-            style={[styles.input, {
-              backgroundColor: colors.inputBackground,
-              color: colors.text,
-              borderColor: colors.border,
-            }]}
-            placeholder="What's on your mind?"
-            placeholderTextColor={colors.textSecondary}
-            value={content}
-            onChangeText={setContent}
-            multiline
-            maxLength={characterLimit}
-            textAlignVertical="top"
-          />
+            {/* Text Input */}
+            <TextInput
+              style={[styles.input, {
+                backgroundColor: colors.inputBackground,
+                color: colors.text,
+                borderColor: colors.border,
+              }]}
+              placeholder="What's on your mind?"
+              placeholderTextColor={colors.textSecondary}
+              value={content}
+              onChangeText={setContent}
+              multiline
+              maxLength={characterLimit}
+              textAlignVertical="top"
+              returnKeyType="default"
+              blurOnSubmit={true}
+            />
 
-          {/* Image Preview */}
-          {imageUri && (
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: imageUri }} style={styles.image} />
+            {/* Image Preview */}
+            {imageUri && (
+              <TouchableWithoutFeedback>
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: imageUri }} style={styles.image} />
+                  <TouchableOpacity 
+                    style={[styles.removeButton, { backgroundColor: colors.error }]} 
+                    onPress={removeImage}
+                  >
+                    <Ionicons name="close" size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.actionContainer}>
               <TouchableOpacity 
-                style={[styles.removeButton, { backgroundColor: colors.error }]} 
-                onPress={removeImage}
+                style={[styles.imageButton, { 
+                  backgroundColor: colors.inputBackground,
+                  borderColor: colors.border,
+                }]} 
+                onPress={pickImage}
+                disabled={loading}
               >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
+                <Ionicons name="image" size={24} color={colors.primary} />
+                <Text style={[styles.imageButtonText, { color: colors.text }]}>
+                  {imageUri ? 'Change Photo' : 'Add Photo'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.postButton, { 
+                  backgroundColor: colors.primary,
+                  opacity: (!content.trim() && !imageUri) || loading ? 0.5 : 1,
+                }]}
+                onPress={handlePost}
+                disabled={(!content.trim() && !imageUri) || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={colors.background} />
+                ) : (
+                  <>
+                    <Ionicons name="paper-plane" size={20} color={colors.background} />
+                    <Text style={[styles.postButtonText, { color: colors.background }]}>
+                      Share Post
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
-          )}
 
-          {/* Action Buttons */}
-          <View style={styles.actionContainer}>
-            <TouchableOpacity 
-              style={[styles.imageButton, { 
-                backgroundColor: colors.inputBackground,
-                borderColor: colors.border,
-              }]} 
-              onPress={pickImage}
-              disabled={loading}
-            >
-              <Ionicons name="image" size={24} color={colors.primary} />
-              <Text style={[styles.imageButtonText, { color: colors.text }]}>
-                {imageUri ? 'Change Photo' : 'Add Photo'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.postButton, { 
-                backgroundColor: colors.primary,
-                opacity: (!content.trim() && !imageUri) || loading ? 0.5 : 1,
-              }]}
-              onPress={handlePost}
-              disabled={(!content.trim() && !imageUri) || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.background} />
-              ) : (
-                <>
-                  <Ionicons name="paper-plane" size={20} color={colors.background} />
-                  <Text style={[styles.postButtonText, { color: colors.background }]}>
-                    Share Post
+            {/* Tips */}
+            <TouchableWithoutFeedback>
+              <View style={[styles.tipsContainer, { backgroundColor: colors.inputBackground }]}>
+                <Ionicons name="bulb-outline" size={20} color={colors.textSecondary} />
+                <View style={styles.tipsTextContainer}>
+                  <Text style={[styles.tipsTitle, { color: colors.text }]}>Tips for great posts</Text>
+                  <Text style={[styles.tipsText, { color: colors.textSecondary }]}>
+                    • Be authentic and share your thoughts{'\n'}
+                    • Add high-quality images{'\n'}
+                    • Keep it concise and engaging
                   </Text>
-                </>
-              )}
-            </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-
-          {/* Tips */}
-          <View style={[styles.tipsContainer, { backgroundColor: colors.inputBackground }]}>
-            <Ionicons name="bulb-outline" size={20} color={colors.textSecondary} />
-            <View style={styles.tipsTextContainer}>
-              <Text style={[styles.tipsTitle, { color: colors.text }]}>Tips for great posts</Text>
-              <Text style={[styles.tipsText, { color: colors.textSecondary }]}>
-                • Be authentic and share your thoughts{'\n'}
-                • Add high-quality images{'\n'}
-                • Keep it concise and engaging
-              </Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
